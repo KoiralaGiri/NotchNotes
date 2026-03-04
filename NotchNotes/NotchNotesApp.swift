@@ -10,9 +10,11 @@ import SwiftData
 
 @main
 struct NotchNotesApp: App {
-    var sharedModelContainer: ModelContainer = {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    static var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Note.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -27,6 +29,6 @@ struct NotchNotesApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(Self.sharedModelContainer)
     }
 }
