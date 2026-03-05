@@ -16,13 +16,15 @@ NotchNotes turns the notch on your MacBook into something actually useful. Push 
 
 > **Requires a MacBook with a notch** (MacBook Pro 2021 and later, MacBook Air M2 and later) running macOS Sonoma 14+.
 
+Also, just so everyone knows, this is like extermely basic. My friend and I just wanted somewhere for us to store our notes without having to go back to the desktop. By notes, I mean stickies. The notch kinda has no use for anything, so we thought why not stick it in the top of the screen. There are a ton of bugs where it doesn't recognize when you're hovering over it when other apps are open, so I'm working on that.
+
 ## Install
 
 **Option 1 — Download (easiest)**
 
 Go to the [Releases](../../releases/latest) page, download `NotchNotes.zip`, unzip it, and drag `NotchNotes.app` into your Applications folder.
 
-Since the app is ad-hoc signed (not notarized), macOS will block it on first open. To get around that:
+Since the app is not notarized, macOS will block it on first open. To get around that:
 
 ```
 Right-click NotchNotes.app → Open → Open anyway
