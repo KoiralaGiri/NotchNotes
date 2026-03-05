@@ -6,10 +6,11 @@ class NotchPanelManager: NSResponder {
     static let shared = NotchPanelManager()
     
     private var panel: KeyablePanel?
-    private var trackingWindow: NSWindow?
-    private var isPanelVisible = false
-    private var isExpanded = false
     private var hideTimer: Timer?
+    private var globalPollTimer: Timer?
+    
+    private var isExpanded = false
+    private var isPanelVisible = false
     
     // Model context to pass to the view
     var modelContainer: ModelContainer?
@@ -27,7 +28,6 @@ class NotchPanelManager: NSResponder {
         self.modelContainer = modelContainer
         guard panel == nil else { return }
         setupPanel()
-        setupTrackingArea()
     }
     
     private func setupPanel() {
@@ -48,60 +48,22 @@ class NotchPanelManager: NSResponder {
             defer: false
         )
         
-        panel.level = .floating
+        panel.level = .screenSaver
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = false
         panel.contentViewController = hostingController
-        panel.collectionBehavior = [.canJoinAllSpaces, .ignoresCycle]
+        // .fullScreenAuxiliary allows appearing over full screen apps, .canJoinAllSpaces shows on all desktops
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         // Allow the panel to be key so keyboard works and warnings go away
         panel.becomesKeyOnlyIfNeeded = true
         
         self.panel = panel
         
         positionPanel()
-    }
-    
-    private func setupTrackingArea() {
-        guard let screen = NSScreen.main else { return }
         
-        // Place the trigger zone right AT the notch / top of the screen
-        // The notch area is within the safe area insets
-        let topSafeArea = screen.safeAreaInsets.top
-        let notchWidth: CGFloat = 250
-        let triggerHeight: CGFloat = max(topSafeArea, 24) // Cover the notch itself
-        
-        // Position at the very top of the screen
-        let xPos = (screen.frame.width - notchWidth) / 2
-        let yPos = screen.frame.height - triggerHeight
-        
-        let triggerRect = NSRect(x: xPos, y: yPos, width: notchWidth, height: triggerHeight)
-        
-        let trackingWindow = NSWindow(
-            contentRect: triggerRect,
-            styleMask: .borderless,
-            backing: .buffered,
-            defer: false
-        )
-        
-        trackingWindow.level = .statusBar
-        trackingWindow.backgroundColor = .clear
-        trackingWindow.isOpaque = false
-        trackingWindow.ignoresMouseEvents = false
-        trackingWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-        
-        // Setup tracking area on the content view
-        let trackingArea = NSTrackingArea(
-            rect: trackingWindow.contentView!.bounds,
-            options: [.mouseEnteredAndExited, .activeAlways],
-            owner: self,
-            userInfo: nil
-        )
-        
-        trackingWindow.contentView?.addTrackingArea(trackingArea)
-        trackingWindow.orderFront(nil)
-        
-        self.trackingWindow = trackingWindow
+        // Start polling for mouse location globally
+        startGlobalMousePoll()
     }
     
     private func positionPanel() {
@@ -130,13 +92,38 @@ class NotchPanelManager: NSResponder {
     
     // MARK: - Mouse Tracking
     
-    override func mouseEntered(with event: NSEvent) {
-        cancelHideTimer()
-        showPanel()
+    private func getTriggerRect() -> NSRect {
+        guard let screen = NSScreen.main else { return .zero }
+        let topSafeArea = screen.safeAreaInsets.top
+        let notchWidth: CGFloat = 250
+        let triggerHeight: CGFloat = max(topSafeArea, 24)
+        
+        let xPos = (screen.frame.width - notchWidth) / 2
+        let yPos = screen.frame.height - triggerHeight
+        return NSRect(x: xPos, y: yPos, width: notchWidth, height: triggerHeight)
     }
     
-    override func mouseExited(with event: NSEvent) {
-        startHideTimer()
+    private func startGlobalMousePoll() {
+        globalPollTimer?.invalidate()
+        // Poll at 10Hz (very low CPU) to check mouse position
+        globalPollTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            self?.globalMousePollTick()
+        }
+    }
+    
+    private func globalMousePollTick() {
+        let mouseLoc = NSEvent.mouseLocation
+        let triggerRect = getTriggerRect()
+        
+        if triggerRect.contains(mouseLoc) {
+            cancelHideTimer()
+            showPanel()
+        } else {
+            // Only start hiding if panel is visible and mouse isn't hovering it
+            if isPanelVisible && hideTimer == nil {
+                startHideTimer()
+            }
+        }
     }
     
     func startHideTimer() {
@@ -155,9 +142,10 @@ class NotchPanelManager: NSResponder {
         let mouseLoc = NSEvent.mouseLocation
         
         let panelFrame = panel?.frame.insetBy(dx: -20, dy: -20) ?? .zero
-        let triggerFrame = trackingWindow?.frame.insetBy(dx: -20, dy: -10) ?? .zero
+        let triggerFrame = getTriggerRect().insetBy(dx: -20, dy: -10)
         
         if panelFrame.contains(mouseLoc) || triggerFrame.contains(mouseLoc) {
+            hideTimer = nil // Allow polling to restart timer if needed
             return
         }
         
@@ -179,6 +167,7 @@ class NotchPanelManager: NSResponder {
         }
         
         isPanelVisible = true
+        NotificationCenter.default.post(name: NSNotification.Name("NotchPanelDidShow"), object: nil)
     }
     
     func hidePanel() {
@@ -201,8 +190,26 @@ class NotchPanelManager: NSResponder {
     // MARK: - Expand / Collapse
     
     func toggleExpand() {
-        isExpanded.toggle()
-        
+        if isExpanded {
+            collapsePanel()
+        } else {
+            expandPanel()
+        }
+    }
+    
+    func expandPanel() {
+        guard !isExpanded else { return }
+        isExpanded = true
+        animatePanelSize()
+    }
+    
+    func collapsePanel() {
+        guard isExpanded else { return }
+        isExpanded = false
+        animatePanelSize()
+    }
+    
+    private func animatePanelSize() {
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.35
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)

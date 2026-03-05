@@ -91,6 +91,11 @@ struct NotchContentView: View {
                 NotchPanelManager.shared.startHideTimer()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NotchPanelDidShow"))) { _ in
+            if selectedNote != nil && !NotchPanelManager.shared.isPanelExpanded {
+                NotchPanelManager.shared.expandPanel()
+            }
+        }
     }
     
     // MARK: - Note Picker List
