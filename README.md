@@ -8,15 +8,7 @@
 
 ## Overview
 
-NotchNotes turns the notch on your MacBook into something actually useful. Push your cursor to the top of the screen, and a panel drops down with your pinned notes — then disappears when you're done.
-
-### Features
-- **Hover to Open** — push your cursor to the top of the screen and the panel drops down automatically
-- **Rich Text** — bold, italic, underline, strikethrough, font sizes, text colors, highlights, all of it
-- **Multiple Pinned Notes** — pin more than one note and switch between them right from the panel
-- **Auto-sizing** — the panel grows with your content, up to about 80% of your screen height
-- **Fullscreen friendly** — works even when another app is in fullscreen
-- **Auto-save** — saves locally as you type, nothing gets lost
+NotchNotes is a rich text editor that lives in your Mac's notch. Push your cursor to the top of the screen and the panel drops down.
 
 ## Install
 
